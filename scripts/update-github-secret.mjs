@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import sodium from "libsodium-wrappers";
+import { spawn } from "node:child_process";
 
 const secretName = process.env.COZE_SECRET_NAME || "COZE_COOKIES_JSON";
 const statePath = process.env.UPDATED_STORAGE_STATE_PATH || "artifacts/storage_state.updated.json";
@@ -22,14 +22,7 @@ async function main() {
     throw new Error("No usable cookies were found in the updated storage state.");
   }
 
-  const publicKey = await github("GET", `/repos/${repository}/actions/secrets/public-key`);
-  const encryptedValue = await encryptSecret(publicKey.key, JSON.stringify(cookies));
-
-  await github("PUT", `/repos/${repository}/actions/secrets/${secretName}`, {
-    encrypted_value: encryptedValue,
-    key_id: publicKey.key_id
-  });
-
+  await setSecretWithGh(secretName, JSON.stringify(cookies), repository, token);
   console.log(`Updated repository secret ${secretName}.`);
 }
 
@@ -49,33 +42,35 @@ function filterCookies(cookies) {
   }));
 }
 
-async function encryptSecret(publicKey, value) {
-  await sodium.ready;
-  const binaryKey = sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL);
-  const binaryValue = sodium.from_string(value);
-  const encrypted = sodium.crypto_box_seal(binaryValue, binaryKey);
-  return sodium.to_base64(encrypted, sodium.base64_variants.ORIGINAL);
-}
-
-async function github(method, path, body) {
-  const response = await fetch(`https://api.github.com${path}`, {
-    method,
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "User-Agent": "coze-daily-credit-action",
-      "X-GitHub-Api-Version": "2022-11-28",
-      ...(body ? { "Content-Type": "application/json" } : {})
+async function setSecretWithGh(name, value, repository, token) {
+  const ghPath = process.env.GH_CLI_PATH || "gh";
+  const child = spawn(ghPath, ["secret", "set", name, "--repo", repository], {
+    env: {
+      ...process.env,
+      GH_TOKEN: token
     },
-    body: body ? JSON.stringify(body) : undefined
+    stdio: ["pipe", "pipe", "pipe"]
   });
 
-  const text = await response.text();
-  const payload = text ? JSON.parse(text) : {};
-  if (!response.ok) {
-    throw new Error(`GitHub API ${method} ${path} failed: HTTP ${response.status} ${text}`);
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk) => {
+    stdout += chunk;
+  });
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+
+  child.stdin.end(value);
+
+  const code = await new Promise((resolve, reject) => {
+    child.on("error", reject);
+    child.on("close", resolve);
+  });
+
+  if (code !== 0) {
+    throw new Error(`gh secret set failed with exit code ${code}: ${stderr || stdout}`);
   }
-  return payload;
 }
 
 main().catch((error) => {

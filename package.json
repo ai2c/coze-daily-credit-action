@@ -10,7 +10,6 @@
     "update-secret": "node scripts/update-github-secret.mjs"
   },
   "dependencies": {
-    "libsodium-wrappers": "^0.7.15",
     "playwright": "^1.53.0"
   },
   "devDependencies": {}
