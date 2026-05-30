@@ -15,10 +15,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coze-failure
           path: artifacts/
@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload updated storage state
         if: ${{ success() && vars.UPLOAD_UPDATED_STORAGE_STATE == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coze-storage-state
           path: artifacts/storage_state.updated.json
