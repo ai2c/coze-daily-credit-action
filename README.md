@@ -119,7 +119,7 @@ npm start
 
 本项目仅供个人学习交流，请勿将本项目用于违反平台规定或触犯法律的用途，使用本项目产生的一切后果由使用者自行承担
 
-## 🔗 LinuxDo 社区
+## 🔗 LinuxDo 社区1
 
 <div align="center">
   <a href="https://linux.do" target="_blank">
